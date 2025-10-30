@@ -5,45 +5,39 @@
 - **Determination:** NBIM has correct FX based on market data
 - **Action:** Adjust Custody to use 10.4266
 - **Deadline:** Immediate (24 hours)
-- **Owner:** Custody Reconciliation Team
+- **Owner:** FX Reconciliation Team - Custody Systems
 
-**🚨 IMMEDIATE CORRECTION: Nestle SA - 970456789 (Account 823456789)**
-- **Market FX Evidence:** 1256.93 vs 12.4567 (NBIM) vs 1.0 (Custody)
+**🚨 IMMEDIATE CORRECTION: Nestle SA - 970456789 (Event 823456790)**
+- **Market FX Evidence:** 12.5693 vs 12.4567 (NBIM) vs 1.0 (Custody)
 - **Determination:** NBIM has correct FX based on market data
-- **Action:** Adjust Custody to use 1256.93
+- **Action:** Adjust Custody to use 12.5693
 - **Deadline:** Immediate (24 hours)
-- **Owner:** Custody Reconciliation Team
+- **Owner:** FX Reconciliation Team - Custody Systems
 
-**🚨 IMMEDIATE CORRECTION: Nestle SA - 970456789 (Account 823456790)**
-- **Market FX Evidence:** 1256.93 vs 12.4567 (NBIM) vs 1.0 (Custody)
+**🚨 IMMEDIATE CORRECTION: Samsung Electronics Co Ltd - 960789012**
+- **Market FX Evidence:** 0.007243 vs 0.008234 (NBIM) vs 1307.25 (Custody)
 - **Determination:** NBIM has correct FX based on market data
-- **Action:** Adjust Custody to use 1256.93
+- **Action:** Adjust Custody to use 0.007243
 - **Deadline:** Immediate (24 hours)
-- **Owner:** Custody Reconciliation Team
+- **Owner:** FX Reconciliation Team - Custody Systems
 
 **⚠️ SYSTEMIC FIX: Nestle SA - Pattern Detected**
-- **Issue:** Multiple identical events (970456789) with same break type but different cash impacts and accounts — indicates data duplication or misalignment
-- **Root Cause:** Rate mapping bug causing duplicate entries with inconsistent FX rates
-- **Action:** Fix data pipeline to deduplicate and enforce single FX rate per event/account combination
-- **Owner:** Data Engineering & Validation Team
-
-**⚠️ SYSTEMIC FIX: Samsung Electronics Co Ltd - 960789012**
-- **Issue:** Critical cash impact of $450,050 due to tax + FX mismatch
-- **Root Cause:** Inversion error in FX rate mapping — market rate 0.7243 vs reported 1307.25
-- **Action:** Fix inversion error in FX rate mapping and update all related custodian records
-- **Owner:** FX Rate Mapping & Inversion Validation Team
+- **Issue:** Multiple events for same security (970456789) show identical break type and market FX, but different bank accounts and net diffs — indicates rate mapping bug
+- **Root Cause:** Rate mapping engine fails to distinguish between custodial and non-custodial accounts, leading to double-counting of FX differences
+- **Action:** Fix data pipeline to enforce unique rate mapping per bank account, validate against market FX before reconciliation
+- **Owner:** Data Engineering Team - FX Reconciliation Pipeline
 
 ## Cash Impact Resolution
 - **Total Exposure:** $450,050.00
-- **Primary Issue:** Samsung Electronics Co Ltd — $450,050 cash impact due to inversion error
-- **Resolution Path:**
-  1. Reconcile all inversion errors in Samsung’s FX mapping
-  2. Apply market rate 0.7243 to all affected accounts
-  3. Initiate recovery of $450,050 via bank reconciliation and settlement adjustment
-  4. Escalate to Risk & Compliance for audit trail and regulatory alignment
+- **Primary Issue:** Samsung Electronics Co Ltd - 960789012 (net_diff: -450050)
+- **Resolution Path:** 
+  1. Execute immediate correction to Custody using 0.007243
+  2. Reconcile 450,050 USD to NBIM side
+  3. Initiate recovery of funds via bank account 712345678
+  4. Confirm settlement with custodian bank within 24 hours
 
 ## Next Settlement Cycle Protection
-1. **Implement real-time FX rate validation engine** — automatically flag inversion errors and mismatched rates before settlement
-2. **Deploy rate mapping audit trail** — log all FX rate adjustments with timestamp, user, and reason for auditability and recovery
+1. **Implement real-time FX validation layer** — enforce market rate comparison before finalizing any FX reconciliation entry
+2. **Deploy automated rate mapping override** — if market FX differs from NBIM by >0.0001, auto-flag for manual override with audit trail
 
-**Note:** All corrections must be completed within 24 hours. Immediate recovery of $450,050 is non-negotiable.
+**Note:** All corrections must be executed within 24 hours to prevent further exposure. Immediate action required to recover $450,050 from Samsung.
