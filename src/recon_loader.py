@@ -12,10 +12,14 @@ def load_nbim_csv(path: str) -> pd.DataFrame:
         'GROSS_AMOUNT_QUOTATION': 'gross_nbim',
         'NET_AMOUNT_QUOTATION': 'net_nbim',
         'WTHTAX_RATE': 'tax_rate_nbim',
-        'AVG_FX_RATE_QUOTATION_TO_PORTFOLIO': 'fx_nbim'
+        'AVG_FX_RATE_QUOTATION_TO_PORTFOLIO': 'fx_nbim',
+        'QUOTATION_CURRENCY': 'quotation_currency',
+        'SETTLEMENT_CURRENCY': 'settlement_currency'
     })
+    # keep currency columns too so we can detect cross-currency cases later
     df = df[['event_key','isin','organisation','bank_account',
-             'gross_nbim','net_nbim','tax_rate_nbim','fx_nbim']]
+             'gross_nbim','net_nbim','tax_rate_nbim','fx_nbim',
+             'quotation_currency','settlement_currency']]
     df[['gross_nbim','net_nbim','tax_rate_nbim','fx_nbim']] = (
         df[['gross_nbim','net_nbim','tax_rate_nbim','fx_nbim']].apply(pd.to_numeric, errors='coerce')
     )
@@ -23,6 +27,11 @@ def load_nbim_csv(path: str) -> pd.DataFrame:
     df['bank_account'] = df['bank_account'].astype(str).str.strip()
     df['isin'] = df['isin'].astype(str).str.upper().str.strip()
     df['event_key'] = df['event_key'].astype(str).str.strip()
+    # normalize currency columns to upper-case 3-letter codes when present
+    if 'quotation_currency' in df.columns:
+        df['quotation_currency'] = df['quotation_currency'].astype(str).str.upper().str.strip()
+    if 'settlement_currency' in df.columns:
+        df['settlement_currency'] = df['settlement_currency'].astype(str).str.upper().str.strip()
     return df
 
 def load_custody_csv(path: str) -> pd.DataFrame:
@@ -36,7 +45,9 @@ def load_custody_csv(path: str) -> pd.DataFrame:
         'GROSS_AMOUNT': 'gross_cust',
         'NET_AMOUNT_QC': 'net_cust',
         'TAX_RATE': 'tax_rate_cust',
-        'FX_RATE': 'fx_cust'
+        'FX_RATE': 'fx_cust',
+        'CURRENCIES': 'quotation_currency',
+        'SETTLED_CURRENCY': 'settlement_currency'
     })
     # keep per-leg key
     required = ['event_key','isin','bank_account','gross_cust','net_cust','tax_rate_cust','fx_cust']
@@ -51,6 +62,11 @@ def load_custody_csv(path: str) -> pd.DataFrame:
     df['bank_account'] = df['bank_account'].astype(str).str.strip()
     df['isin'] = df['isin'].astype(str).str.upper().str.strip()
     df['event_key'] = df['event_key'].astype(str).str.strip()
+    # normalize currency columns to upper-case 3-letter codes when present
+    if 'quotation_currency' in df.columns:
+        df['quotation_currency'] = df['quotation_currency'].astype(str).str.upper().str.strip()
+    if 'settlement_currency' in df.columns:
+        df['settlement_currency'] = df['settlement_currency'].astype(str).str.upper().str.strip()
     return df
 
 def load_and_align(nbim_path: str, custody_path: str) -> pd.DataFrame:

@@ -1,36 +1,29 @@
 import numpy as np
 import pandas as pd
 
-ABS = 1e-2
-REL = 1e-4
-
-def _close(a, b):
-    if pd.isna(a) or pd.isna(b): return False
-    return np.isclose(a, b, rtol=REL, atol=ABS)
-
 def classify_breaks(df: pd.DataFrame) -> pd.DataFrame:
+    """Pure deterministic break detection - no LLM"""
     out = df.copy()
-    out["break_tax"]   = ~(out.apply(lambda r: _close(r.get("tax_rate_nbim"), r.get("tax_rate_cust")), axis=1))
-    out["break_fx"]    = ~(out.apply(lambda r: _close(r.get("fx_nbim"), r.get("fx_cust")), axis=1))
-    out["break_gross"] = ~(out.apply(lambda r: _close(r.get("gross_nbim"), r.get("gross_cust")), axis=1))
-    out["break_net"]   = ~(out.apply(lambda r: _close(r.get("net_nbim"),   r.get("net_cust")), axis=1))
-
-    def label(r):
+    
+    # Your existing comparison logic
+    out["break_tax"] = ~np.isclose(out["tax_rate_nbim"], out["tax_rate_cust"], rtol=1e-4, atol=1e-2)
+    out["break_fx"] = ~np.isclose(out["fx_nbim"], out["fx_cust"], rtol=1e-4, atol=1e-2)
+    out["break_gross"] = ~np.isclose(out["gross_nbim"], out["gross_cust"], rtol=1e-4, atol=1e-2)
+    out["break_net"] = ~np.isclose(out["net_nbim"], out["net_cust"], rtol=1e-4, atol=1e-2)
+    
+    # Enhanced break labeling
+    def label_break(row):
         reasons = []
-        if r["break_tax"]: reasons.append("tax_rate_mismatch")
-        if r["break_fx"]:
-            # quick inversion hint
-            if pd.notna(r.get("fx_nbim")) and pd.notna(r.get("fx_cust")):
-                prod = r["fx_nbim"] * r["fx_cust"]
-                if np.isfinite(prod) and np.isclose(prod, 1.0, rtol=1e-3, atol=1e-3):
-                    reasons.append("fx_inversion_suspected")
-                else:
-                    reasons.append("fx_mismatch")
-            else:
-                reasons.append("fx_mismatch")
-        if r["break_gross"]: reasons.append("gross_amount_mismatch")
-        if r["break_net"]:   reasons.append("net_amount_mismatch")
-        return "ok" if not reasons else " | ".join(reasons)
-
-    out["break_label"] = out.apply(label, axis=1)
+        if row["break_tax"]: 
+            reasons.append(f"tax_rate_diff:{row['tax_rate_nbim']}vs{row['tax_rate_cust']}")
+        if row["break_fx"]: 
+            reasons.append(f"fx_diff:{row['fx_nbim']}vs{row['fx_cust']}")
+        if row["break_gross"]: 
+            reasons.append(f"gross_diff:{row['gross_nbim']-row['gross_cust']:.0f}")
+        if row["break_net"]: 
+            reasons.append(f"net_diff:{row['net_nbim']-row['net_cust']:.0f}")
+            
+        return " | ".join(reasons) if reasons else "ok"
+    
+    out["break_label"] = out.apply(label_break, axis=1)
     return out

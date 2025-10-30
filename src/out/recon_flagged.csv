@@ -1,6 +1,0 @@
-event_key,isin,organisation,bank_account,gross_nbim,net_nbim,tax_rate_nbim,fx_nbim,gross_cust,net_cust,tax_rate_cust,fx_cust,gross_nbim_minus_gross_cust,net_nbim_minus_net_cust,tax_rate_nbim_minus_tax_rate_cust,fx_nbim_minus_fx_cust,break_tax,break_fx,break_gross,break_net,break_label
-950123456,US0378331005,Apple Inc,501234567,375000,318750,15,11.2345,375000,318750,15,1.0,0,0,0,10.2345,False,True,False,False,fx_mismatch
-960789012,KR7005930003,Samsung Electronics Co Ltd,712345678,9025000,6769950,22,0.008234,9025000,7220000,20,1307.25,0,-450050,2,-1307.241766,True,True,False,True,tax_rate_mismatch | fx_mismatch | net_amount_mismatch
-970456789,CH0038863350,Nestle SA,823456789,62000,40300,35,12.4567,62000,40300,35,1.0,0,0,0,11.4567,False,True,False,False,fx_mismatch
-970456789,CH0038863350,Nestle SA,823456790,46500,30225,35,12.4567,46500,30225,35,1.0,0,0,0,11.4567,False,True,False,False,fx_mismatch
-970456789,CH0038863350,Nestle SA,823456791,31000,20150,35,12.4567,37200,24180,35,1.0,-6200,-4030,0,11.4567,False,True,True,True,fx_mismatch | gross_amount_mismatch | net_amount_mismatch

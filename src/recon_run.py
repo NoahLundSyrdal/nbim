@@ -1,114 +1,112 @@
 import pandas as pd
+from pathlib import Path
 from recon_loader import load_and_align  
 from recon_breaks import classify_breaks
-from llm_client import classify_locally
-from validators import normalize_llm
-from report import save_reports
-from playbook import playbook, assign_priority
-from insights_agent import summarize_next_steps
-from fx_market_agent import verify_fx_against_market
+from fx_market_agent import verify_fx_with_intelligence
+from insights_agent import generate_business_summary
+import os
 
-def to_nbim_dict(r):
-    return {
-        "event_key": r["event_key"],
-        "isin": r.get("isin"),
-        "bank_account": r.get("bank_account"),
-        "gross": r.get("gross_nbim"),
-        "net": r.get("net_nbim"),
-        "tax_rate": r.get("tax_rate_nbim"),
-        "fx": r.get("fx_nbim"),
-    }
-
-def to_cust_dict(r):
-    return {
-        "event_key": r["event_key"],
-        "isin": r.get("isin"),
-        "bank_account": r.get("bank_account"),
-        "gross": r.get("gross_cust"),
-        "net": r.get("net_cust"),
-        "tax_rate": r.get("tax_rate_cust"),
-        "fx": r.get("fx_cust"),
-    }
-
-def to_flags(r):
-    return {
-        "break_tax": bool(r.get("break_tax")),
-        "break_fx": bool(r.get("break_fx")),
-        "break_gross": bool(r.get("break_gross")),
-        "break_net": bool(r.get("break_net")),
-        "diffs": {
-            "gross": float((r.get("gross_nbim") or 0) - (r.get("gross_cust") or 0)),
-            "net": float((r.get("net_nbim") or 0) - (r.get("net_cust") or 0)),
-            "tax_rate": float((r.get("tax_rate_nbim") or 0) - (r.get("tax_rate_cust") or 0)),
-            "fx": float((r.get("fx_nbim") or 0) - (r.get("fx_cust") or 0)),
-        }
-    }
-
-from pathlib import Path
-
+def compute_deterministic_analysis(merged_df):
+    """Everything computable without LLM"""
+    breaks = classify_breaks(merged_df)
+    
+    # Enhanced cash impact calculation
+    breaks['cash_impact'] = breaks.apply(
+        lambda r: max(abs(float(r.get('gross_nbim', 0) or 0) - float(r.get('gross_cust', 0) or 0)), 
+                     abs(float(r.get('net_nbim', 0) or 0) - float(r.get('net_cust', 0) or 0))), 
+        axis=1
+    )
+    
+    # Enhanced priority - categorize ALL breaks, not just filtering
+    def calculate_priority(row):
+        cash_impact = row['cash_impact']
+        break_type = row.get('break_label', '')
+        
+        # FX and tax breaks are higher priority due to systemic risk
+        if 'fx' in break_type.lower() or 'tax' in break_type.lower():
+            if cash_impact > 50000:
+                return 'CRITICAL'
+            elif cash_impact > 5000:
+                return 'HIGH'
+        
+        # Standard cash impact based priority
+        if cash_impact > 100000:
+            return 'CRITICAL'
+        elif cash_impact > 10000:
+            return 'HIGH' 
+        elif cash_impact > 1000:
+            return 'MEDIUM'
+        else:
+            return 'LOW'
+    
+    breaks['priority'] = breaks.apply(calculate_priority, axis=1)
+    
+    return breaks
 
 if __name__ == "__main__":
-    # Resolve data files relative to project root 
-    data_dir = Path(__file__).resolve().parent.parent / "data"
-
+    # Fix paths based on your project structure
+    project_root = Path(__file__).resolve().parent.parent  # Goes from src/ to NBIM/
+    data_dir = project_root / "data"
+    out_dir = Path(__file__).resolve().parent / "out"  # src/out/
+    
+    # Create output directory if it doesn't exist
+    out_dir.mkdir(exist_ok=True)
+    
+    print(f"Looking for data in: {data_dir}")
+    print(f"Output directory: {out_dir}")
+    
+    # Check if files exist
+    nbim_file = data_dir / "NBIM_Dividend_Bookings 1 (2).csv"
+    custody_file = data_dir / "CUSTODY_Dividend_Bookings 1 (2).csv"
+    
+    if not nbim_file.exists():
+        print(f"❌ Missing file: {nbim_file}")
+        exit(1)
+    if not custody_file.exists():
+        print(f"❌ Missing file: {custody_file}")
+        exit(1)
+        
+    print("✓ Data files found")
+    
+    # 1. Load and compute everything deterministically
     merged = load_and_align(
-        str(data_dir / "NBIM_Dividend_Bookings 1 (2).csv"),
-        str(data_dir / "CUSTODY_Dividend_Bookings 1 (2).csv"),
+        str(nbim_file),
+        str(custody_file)
     )
-
-    flagged = classify_breaks(merged)
-
-    broken = flagged[flagged["break_label"] != "ok"].copy()
-    results = []
-    for _, row in broken.iterrows():
-        nbim = to_nbim_dict(row)
-        cust = to_cust_dict(row)
-        flags = to_flags(row)
-        llm = classify_locally(nbim, cust, flags)
-        llm = normalize_llm(llm)
-        results.append(llm)
-
-    # attach LLM outputs
-    broken = broken.reset_index(drop=True)
-    if results:
-        broken[["llm_label","llm_reason","llm_action","llm_confidence"]] = pd.DataFrame(
-            [(r.get("label"), r.get("reason"), r.get("action"), r.get("confidence")) for r in results]
-        )
-        # Use the playbook for next_action_code/standard_step but compute
-        # priority dynamically based on monetary impact and label.
-        pb = broken.apply(lambda r: pd.Series(playbook(r.get("llm_label") or "other")), axis=1)
-        # Attach the non-priority fields from the playbook
-        broken[["next_action_code", "standard_step"]] = pb[["next_action_code", "standard_step"]]
-
-        # Compute priority using assign_priority
-        def _compute_priority(r):
-            label = r.get("llm_label") or r.get("break_label") or "other"
-            diffs = {
-                "gross": float((r.get("gross_nbim") or 0) - (r.get("gross_cust") or 0)),
-                "net": float((r.get("net_nbim") or 0) - (r.get("net_cust") or 0)),
-            }
-            return assign_priority(label, diffs)
-
-        broken["priority"] = broken.apply(_compute_priority, axis=1)
-    print("\n=== PER-LEG RECON (all rows) ===")
-    print(flagged[["event_key","isin","bank_account","gross_nbim","gross_cust","net_nbim","net_cust","break_label"]])
-
+    
+    # 2. All deterministic analysis first
+    breaks = compute_deterministic_analysis(merged)
+    broken = breaks[breaks["break_label"] != "ok"].copy()
+    
     if not broken.empty:
-        # Run FX verification BEFORE saving or summarizing
-        broken = verify_fx_against_market(broken, date_col="dividend_date")
-
-        print("\n=== LLM SUGGESTIONS (only breaks) ===")
-        print(broken[[
-            "event_key", "isin", "bank_account",
-            "break_label", "llm_label", "llm_reason",
-            "llm_action", "llm_confidence", "fx_correct_side"
-        ]])
-
-        # Save updated data with fx_correct_side + market_fx columns
-        save_reports(flagged, broken)
-        print("\nSaved: out/recon_flagged.csv, out/recon_llm.csv, out/summary.md")
-
-        # Generate and save final summary using verified FX info
-        summary = summarize_next_steps(broken)
-        (Path("out") / "summary_next_steps.md").write_text(summary)
-        print("\nSaved: out/summary_next_steps.md")
+        print(f"Found {len(broken)} total breaks")
+        
+        # NO FILTERING - process ALL breaks, but prioritize them
+        material_breaks = broken.copy()  # Now includes all breaks
+        
+        print(f"Processing ALL {len(material_breaks)} breaks by priority...")
+        
+        # 3. LLM CALL #1: Smart FX analysis only for FX breaks
+        print("Applying FX intelligence to breaks...")
+        broken_with_fx = verify_fx_with_intelligence(material_breaks)
+        
+        # 4. LLM CALL #2: Business synthesis of ALL breaks
+        print("Generating comprehensive business summary...")
+        final_summary = generate_business_summary(broken_with_fx)
+        
+        # Save results
+        broken_with_fx.to_csv(out_dir / "recon_breaks_detailed.csv", index=False)
+        with open(out_dir / "business_summary.md", "w", encoding='utf-8') as f:
+            f.write(final_summary)
+        
+        print("✓ Comprehensive break analysis complete")
+        print("✓ FX intelligence applied") 
+        print("✓ Complete business summary generated")
+        
+        # Print summary
+        print("\n" + "="*50)
+        print("COMPREHENSIVE PRIORITY ACTIONS")
+        print("="*50)
+        print(final_summary)
+    else:
+        print("No breaks found - all reconciliations clean!")

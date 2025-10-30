@@ -1,73 +1,63 @@
-import re
-import pandas as pd
 from llm_client import call_llm
-from pathlib import Path
+import pandas as pd
 
-def summarize_next_steps(df: pd.DataFrame) -> str:
-    if df.empty:
-        return "No breaks to summarize."
+def generate_business_summary(df: pd.DataFrame) -> str:
+    """LLM synthesizes analysis with ACTUAL FX corrections"""
+    
+    # Prepare summary with FX analysis results
+    summary_data = []
+    for _, row in df.iterrows():
+        item = {
+            'event': row.get('event_key', 'Unknown'),
+            'security': row.get('organisation', row.get('instrument_description', 'Unknown')),
+            'break_type': row.get('break_label', 'Unknown'),
+            'priority': row.get('priority', 'MEDIUM'),
+            'cash_impact': row.get('cash_impact', 0),
+            'bank_account': row.get('bank_account', 'Unknown'),
+            # Include the actual FX analysis results
+            'correct_side': row.get('correct_side', 'unknown'),
+            'market_fx': row.get('market_fx'),
+            'suggested_rate': row.get('suggested_rate'),
+            'is_inversion': row.get('is_inversion', False)
+        }
+        
+        summary_data.append(item)
+    
+    prompt = f"""
+    As a senior reconciliation analyst, provide decisive actions based on ACTUAL FX analysis:
 
-    results = []
-    header = """You are a reconciliation analyst. 
-Write one clear summary per group (ISIN + event_key).
-Include:
-- Type of break(s)
-- FX correct side if present
-- Who should act (NBIM/Custody/Both)
-- 2–3 next steps and resolution criteria.
-"""
+    {summary_data}
 
-    # Group by both event_key and isin so each Nestlé leg is merged once
-    for (event, isin), group in df.groupby(["event_key", "isin"], dropna=False):
-        org = group["organisation"].iloc[0]
-        block = group.to_markdown(index=False)
-        prompt = f"{header}\nSecurity: {org} ({isin}) | Event: {event}\nDetails:\n{block}\n\nWrite summary:"
+    Structure your response EXACTLY like this:
 
-        # call chat function here
-        summary_text = call_llm(prompt)
+    ## FX Correction Decisions
 
-        # If market_fx is present on the record, prefer a one-line market summary
-        fx_one_liner = ""
-        # use the first row as a representative record
-        r = group.iloc[0]
-        if "market_fx" in group.columns and not pd.isna(r.get("market_fx")):
-            # Fix inconsistent correctness labeling: trust whichever side is closer to market_fx
-            try:
-                if (
-                    abs(r.get("fx_cust", 0) - r.get("market_fx", 0))
-                    < abs(r.get("fx_nbim", 0) - r.get("market_fx", 0))
-                ):
-                    r["fx_correct_side"] = "custody"
-                else:
-                    r["fx_correct_side"] = "nbim"
-            except Exception:
-                # fall back to whatever the record contains
-                pass
+    **🚨 IMMEDIATE CORRECTION: [Security] - [Event]**
+    - **Market FX Evidence:** [market rate] vs [NBIM rate] vs [Custody rate]
+    - **Determination:** [NBIM/Custody] has correct FX based on market data
+    - **Action:** Adjust [incorrect side] to use [suggested rate]
+    - **Deadline:** Immediate (24 hours)
 
-            # determine correct side robustly
-            correct_side = r.get("fx_correct_side", "unknown") or "unknown"
-            try:
-                market_line = f"Market FX (Norges Bank): {float(r['market_fx']):.6f} — {correct_side} correct.\n\n"
-                fx_one_liner = market_line
-            except Exception:
-                fx_one_liner = ""
+    **⚠️ SYSTEMIC FIX: [Security] - Pattern Detected**
+    - **Issue:** [Description of systematic error]
+    - **Root Cause:** [Inversion error / Rate mapping bug / etc.]
+    - **Action:** [Fix data pipeline / Update rate mapping / etc.]
+    - **Owner:** [Team responsible]
 
-        # If the LLM already included a 'verify fx source' instruction but we have
-        # a market_fx available, remove that redundant bullet to avoid contradiction.
-        try:
-            if "verify fx source" in (summary_text or "").lower() and "market_fx" in group.columns and not group["market_fx"].isna().all():
-                summary_text = re.sub(r"(?i)verify fx source[^.]*[.]", "", summary_text)
-        except Exception:
-            # be permissive — if regex fails, keep the original summary_text
-            pass
+    ## Cash Impact Resolution
+    - **Total Exposure:** $[sum of all cash impacts]
+    - **Primary Issue:** [Largest cash impact break]
+    - **Resolution Path:** [Specific steps to recover funds]
 
-        results.append(f"## {org} ({isin}) — Event {event}\n{fx_one_liner}{summary_text.strip()}\n")
+    ## Next Settlement Cycle Protection
+    1. **[Preventive measure 1]**
+    2. **[Preventive measure 2]**
 
-    return "\n\n".join(results)
+    Rules:
+    - MAKE DECISIONS based on the FX analysis provided
+    - Specify EXACT RATES to use for corrections
+    - Assign ACTUAL OWNERS for each fix
+    - Focus on RECOVERING CASH, not just describing problems
+    """
 
-
-if __name__ == "__main__":
-    df = pd.read_csv("out/recon_llm.csv")
-    out = summarize_next_steps(df)
-    Path("out/summary_next_steps.md").write_text(out, encoding="utf-8")
-    print("wrote out/summary_next_steps.md with", len(df.groupby(['event_key','isin'])), "sections")
+    return call_llm(prompt)
