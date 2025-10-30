@@ -5,6 +5,8 @@ from llm_client import classify_locally
 from validators import normalize_llm
 from report import save_reports
 from playbook import playbook, assign_priority
+from insights_agent import summarize_next_steps
+from fx_market_agent import verify_fx_against_market
 
 def to_nbim_dict(r):
     return {
@@ -92,9 +94,21 @@ if __name__ == "__main__":
     print(flagged[["event_key","isin","bank_account","gross_nbim","gross_cust","net_nbim","net_cust","break_label"]])
 
     if not broken.empty:
+        # 🔹 Run FX verification BEFORE saving or summarizing
+        broken = verify_fx_against_market(broken, date_col="dividend_date")
+
         print("\n=== LLM SUGGESTIONS (only breaks) ===")
-        print(broken[["event_key","isin","bank_account","break_label","llm_label","llm_reason","llm_action","llm_confidence"]])
+        print(broken[[
+            "event_key", "isin", "bank_account",
+            "break_label", "llm_label", "llm_reason",
+            "llm_action", "llm_confidence", "fx_correct_side"
+        ]])
 
+        # 🔹 Save updated data with fx_correct_side + market_fx columns
+        save_reports(flagged, broken)
+        print("\nSaved: out/recon_flagged.csv, out/recon_llm.csv, out/summary.md")
 
-    save_reports(flagged, broken)
-    print("\nSaved: out/recon_flagged.csv, out/recon_llm.csv, out/summary.md")
+        # 🔹 Generate and save final summary using verified FX info
+        summary = summarize_next_steps(broken)
+        (Path("out") / "summary_next_steps.md").write_text(summary)
+        print("\nSaved: out/summary_next_steps.md")
