@@ -31,7 +31,7 @@ Include:
         # use the first row as a representative record
         r = group.iloc[0]
         if "market_fx" in group.columns and not pd.isna(r.get("market_fx")):
-            # 🧠 Fix inconsistent correctness labeling: trust whichever side is closer to market_fx
+            # Fix inconsistent correctness labeling: trust whichever side is closer to market_fx
             try:
                 if (
                     abs(r.get("fx_cust", 0) - r.get("market_fx", 0))
@@ -70,4 +70,4 @@ if __name__ == "__main__":
     df = pd.read_csv("out/recon_llm.csv")
     out = summarize_next_steps(df)
     Path("out/summary_next_steps.md").write_text(out, encoding="utf-8")
-    print("✅ wrote out/summary_next_steps.md with", len(df.groupby(['event_key','isin'])), "sections")
+    print("wrote out/summary_next_steps.md with", len(df.groupby(['event_key','isin'])), "sections")

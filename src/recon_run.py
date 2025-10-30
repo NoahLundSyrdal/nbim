@@ -94,7 +94,7 @@ if __name__ == "__main__":
     print(flagged[["event_key","isin","bank_account","gross_nbim","gross_cust","net_nbim","net_cust","break_label"]])
 
     if not broken.empty:
-        # 🔹 Run FX verification BEFORE saving or summarizing
+        # Run FX verification BEFORE saving or summarizing
         broken = verify_fx_against_market(broken, date_col="dividend_date")
 
         print("\n=== LLM SUGGESTIONS (only breaks) ===")
@@ -104,11 +104,11 @@ if __name__ == "__main__":
             "llm_action", "llm_confidence", "fx_correct_side"
         ]])
 
-        # 🔹 Save updated data with fx_correct_side + market_fx columns
+        # Save updated data with fx_correct_side + market_fx columns
         save_reports(flagged, broken)
         print("\nSaved: out/recon_flagged.csv, out/recon_llm.csv, out/summary.md")
 
-        # 🔹 Generate and save final summary using verified FX info
+        # Generate and save final summary using verified FX info
         summary = summarize_next_steps(broken)
         (Path("out") / "summary_next_steps.md").write_text(summary)
         print("\nSaved: out/summary_next_steps.md")
