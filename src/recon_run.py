@@ -60,13 +60,13 @@ if __name__ == "__main__":
     custody_file = data_dir / "CUSTODY_Dividend_Bookings 1 (2).csv"
     
     if not nbim_file.exists():
-        print(f"❌ Missing file: {nbim_file}")
+        print(f"Missing file: {nbim_file}")
         exit(1)
     if not custody_file.exists():
-        print(f"❌ Missing file: {custody_file}")
+        print(f"Missing file: {custody_file}")
         exit(1)
         
-    print("✓ Data files found")
+    print("Data files found")
     
     # 1. Load and compute everything deterministically
     merged = load_and_align(
@@ -99,9 +99,9 @@ if __name__ == "__main__":
         with open(out_dir / "business_summary.md", "w", encoding='utf-8') as f:
             f.write(final_summary)
         
-        print("✓ Comprehensive break analysis complete")
-        print("✓ FX intelligence applied") 
-        print("✓ Complete business summary generated")
+        print("Comprehensive break analysis complete")
+        print("FX intelligence applied") 
+        print("Complete business summary generated")
         
         # Print summary
         print("\n" + "="*50)

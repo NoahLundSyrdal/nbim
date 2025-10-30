@@ -32,13 +32,13 @@ def generate_business_summary(df: pd.DataFrame) -> str:
 
     ## FX Correction Decisions
 
-    **🚨 IMMEDIATE CORRECTION: [Security] - [Event]**
+    **IMMEDIATE CORRECTION: [Security] - [Event]**
     - **Market FX Evidence:** [market rate] vs [NBIM rate] vs [Custody rate]
     - **Determination:** [NBIM/Custody] has correct FX based on market data
     - **Action:** Adjust [incorrect side] to use [suggested rate]
     - **Deadline:** Immediate (24 hours)
 
-    **⚠️ SYSTEMIC FIX: [Security] - Pattern Detected**
+    **SYSTEMIC FIX: [Security] - Pattern Detected**
     - **Issue:** [Description of systematic error]
     - **Root Cause:** [Inversion error / Rate mapping bug / etc.]
     - **Action:** [Fix data pipeline / Update rate mapping / etc.]

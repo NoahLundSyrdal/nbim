@@ -16,7 +16,7 @@ def fetch_market_fx(base: str, quote: str, date: str) -> Optional[float]:
     
     # Return cached result if available
     if cache_key in FX_CACHE:
-        print(f"📦 Using cached FX: {base}/{quote} on {date} = {FX_CACHE[cache_key]}")
+        print(f"Using cached FX: {base}/{quote} on {date} = {FX_CACHE[cache_key]}")
         return FX_CACHE[cache_key]
     
     # Otherwise fetch from API
@@ -39,19 +39,19 @@ def fetch_market_fx(base: str, quote: str, date: str) -> Optional[float]:
         
         if base.upper() in PER_100_CURRENCIES:
             normalized_value = value / 100.0
-            print(f"🔧 Normalized {base}/NOK from {value} (per 100) to {normalized_value} (per 1)")
+            print(f"Normalized {base}/NOK from {value} (per 100) to {normalized_value} (per 1)")
             # Cache BEFORE printing "fetched" message
             FX_CACHE[cache_key] = normalized_value
-            print(f"💰 Fetched FX: {base}/{quote} on {date} = {normalized_value}")  # Changed to "Fetched"
+            print(f"Fetched FX: {base}/{quote} on {date} = {normalized_value}")  # Changed to "Fetched"
             return normalized_value
-        
+
         # Cache BEFORE printing
         FX_CACHE[cache_key] = value
-        print(f"💰 Fetched FX: {base}/{quote} on {date} = {value}")  # Changed to "Fetched"
+        print(f"Fetched FX: {base}/{quote} on {date} = {value}")  # Changed to "Fetched"
         return value
         
     except Exception as e:
-        print(f"❌ Could not fetch {base}/{quote} FX for {date}: {e}")
+        print(f"Could not fetch {base}/{quote} FX for {date}: {e}")
         return None
 
 def get_base_currency_from_isin(isin: str) -> str:
@@ -180,7 +180,7 @@ def verify_fx_with_intelligence(df: pd.DataFrame) -> pd.DataFrame:
             market_fx = fetch_market_fx(base_ccy, quote_ccy, fx_date)
             
             if market_fx:
-                print(f"💰 Market FX for {base_ccy}/{quote_ccy} on {fx_date}: {market_fx}")
+                print(f"Market FX for {base_ccy}/{quote_ccy} on {fx_date}: {market_fx}")
                 
                 # Analyze with LLM using actual market data - NOW INCLUDES SECURITY PARAMETER
                 analysis = analyze_fx_discrepancy(
