@@ -46,7 +46,7 @@ def compute_deterministic_analysis(merged_df):
     return breaks
 
 if __name__ == "__main__":
-    # Fix paths based on your project structure
+    # Fix paths based on project structure
     project_root = Path(__file__).resolve().parent.parent  # Goes from src/ to NBIM/
     data_dir = project_root / "data"
     out_dir = Path(__file__).resolve().parent / "out"  # src/out/
