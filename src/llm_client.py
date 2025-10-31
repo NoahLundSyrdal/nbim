@@ -2,6 +2,20 @@ import json
 import os
 import warnings
 from openai import OpenAI
+from dotenv import load_dotenv, find_dotenv
+
+# Load environment variables from a .env file (if present). When you run
+# scripts from `src/` the project root `.env` may live one level up, so use
+# find_dotenv() to search parent directories. This will be a no-op if no
+# .env file exists.
+load_dotenv(find_dotenv())
+
+# Model choice. Define early so helper functions can validate it when
+# creating the client. Default is a provider-style id used for local/third-
+# party LLMs; users who want OpenAI cloud should set `LLM_MODEL` to a
+# valid OpenAI model identifier in their environment or .env.
+MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-vl-4b")
+
 
 # Configuration: prefer environment variables. This makes the repository
 # usable with either a local LLM (LM Studio / llm server) or the OpenAI API.
@@ -20,6 +34,18 @@ def _make_client():
     if local_base:
         return OpenAI(base_url=local_base, api_key=local_key)
     if api_key:
+        # Warn if the configured model looks like a non-OpenAI model id
+        # (many third-party models use a group/name format with '/'). Using
+        # such an id against the OpenAI cloud will produce an "invalid model"
+        # error, so surface a clear warning to the user.
+        if '/' in MODEL:
+            warnings.warn(
+                "LLM_MODEL appears to reference a non-OpenAI model id (contains '/'). "
+                "When using the OpenAI cloud API set LLM_MODEL to a valid OpenAI model "
+                "identifier (e.g., 'gpt-4o-mini' or 'gpt-4o') or set LLM_LOCAL_BASE_URL "
+                "to point to a local/third-party LLM base URL.",
+                UserWarning,
+            )
         # The OpenAI client constructor accepts api_key and optional base
         if api_base:
             return OpenAI(api_key=api_key, base_url=api_base)
@@ -34,8 +60,6 @@ def _make_client():
 
 
 CLIENT = _make_client()
-
-MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-vl-4b")
 
 SYSTEM_INSTRUCTIONS = (
     "You are a reconciliation analyst. Classify a dividend break and propose the next action. "
