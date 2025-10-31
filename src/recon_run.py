@@ -4,6 +4,8 @@ from recon_loader import load_and_align
 from recon_breaks import classify_breaks
 from fx_market_agent import verify_fx_with_intelligence
 from insights_agent import generate_business_summary
+from pathlib import Path
+from email_agent import generate_recon_email_concise, save_email_draft
 import os
 
 def compute_deterministic_analysis(merged_df):
@@ -103,10 +105,11 @@ if __name__ == "__main__":
         print("FX intelligence applied") 
         print("Complete business summary generated")
         
-        # Print summary
-        print("\n" + "="*50)
-        print("COMPREHENSIVE PRIORITY ACTIONS")
-        print("="*50)
-        print(final_summary)
+        print("Composing and formatting reconciliation email (LLM call #3)...")
+        email_md = generate_recon_email_concise(broken_with_fx, final_summary, audience="FX Reconciliation Team", sender_name="Noah")
+        email_path = out_dir / "recon_email_draft.md"
+        save_email_draft(email_md, str(email_path))
+
+        print("Reconciliation email draft generated")
     else:
         print("No breaks found - all reconciliations clean!")
