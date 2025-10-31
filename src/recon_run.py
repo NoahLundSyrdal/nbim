@@ -106,6 +106,8 @@ if __name__ == "__main__":
         print("Complete business summary generated")
         
         print("Composing and formatting reconciliation email (LLM call #3)...")
+
+        # 5. LLM CALL #3: Email composition
         email_md = generate_recon_email_concise(broken_with_fx, final_summary, audience="FX Reconciliation Team", sender_name="Noah")
         email_path = out_dir / "recon_email_draft.md"
         save_email_draft(email_md, str(email_path))
