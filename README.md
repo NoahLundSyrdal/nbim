@@ -5,6 +5,21 @@ and improve dividend reconciliation between NBIM internal bookings and global cu
 reports. This repository contains the brief, datasets and guidance for a compact
 prototype and an architecture vision.
 
+Documentation of Prompts and Approach
+
+The system uses three LLM calls integrated into the reconciliation workflow:
+
+FX Intelligence (LLM #1) – Given NBIM, custody, and market FX rates, the model explains discrepancies and proposes process improvements.
+Prompt focus: structured JSON output with root cause, systematic flag, and prevention steps.
+Goal: add interpretability, not decision-making.
+
+Business Summary (LLM #2) – Synthesizes all analyzed breaks into an executive Markdown summary.
+Prompt focus: fixed structure (Immediate Corrections, Systemic Fixes, Cash Impact, Next Cycle).
+Goal: produce actionable decisions based on deterministic analysis.
+
+Concise Email (LLM #3) – Generates a 120-word, send-ready email highlighting top corrections.
+Prompt focus: prioritize by cash impact and urgency, suppress noise.
+Goal: automate communication while keeping human oversight.
 
 ┌──────────────┐          ┌──────────────────────────────┐          ┌────────────────┐
 │  Agent 1     │          │          Agent 2             │          │    Agent 3     │
@@ -19,7 +34,7 @@ prototype and an architecture vision.
   input breaks  ───────────────────────────────────────────────────────────▶ out/recon_email_draft.md
 
 
-3. Analysis & Recommendations
+Analysis & Recommendations
 
 This system demonstrates how agent-based automation can streamline financial reconciliation by combining data validation, LLM reasoning, and concise communication. The core opportunities lie in extending the existing agents for greater intelligence and transparency: automatic FX and dividend reconciliation with natural-language explanations, intelligent email drafts with embedded evidence, continuous FX exposure monitoring, anomaly clustering for break-pattern detection, and a natural-language query interface for ad-hoc reporting. Each enhancement focuses on reducing manual effort, improving interpretability, and ensuring audit-ready outputs.
 
