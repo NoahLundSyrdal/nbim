@@ -2,3 +2,4 @@ pandas
 openai
 tabulate
 requests
+python-dotenv
